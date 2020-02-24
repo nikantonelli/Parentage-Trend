@@ -5,7 +5,7 @@ Ext.define('CustomApp', {
     config: {
         defaultSettings: {
             periodName: 'Day',
-            periodCount: 64,
+            periodCount: 2,
             endDate: new Date()
         }
 
@@ -35,7 +35,7 @@ Ext.define('CustomApp', {
                     filters = { property: 'Parent', operator: '>', value: 0 };
                 }
 
-                this._loadRecordCount(type.typePath, filters, type.name, date).then({
+                this._loadRecordCount(type.typePath, Ext.clone(filters), type.name, date).then({
                     success: function(result) {
 //                        me.parented.push(result);
                         deferred.resolve(result);
@@ -114,7 +114,29 @@ Ext.define('CustomApp', {
         });
     },
 
-    _updateChart: function(results) {
+    _updateChart: function() {
+        var me = this;
+        var chart = this.down('#trendChart');
+
+        //Get all the enable buttons in the top option box and hide those turned off
+        var topBox = this.down('#option_box');
+
+        _.each(me.types, function(type) {
+             var checkBox = topBox.down('#'+type.name.replace(/\s+/g, ''));
+            if (checkBox ) {
+                var series = _.find( chart.getChart().series, function(series) {
+                    return series.name === type.name;
+                });
+                if (checkBox.getValue()) {
+                    series.show();
+                } else {
+                    series.hide();
+                }
+            }
+        });
+    },
+
+    _drawChart: function(results) {
         this._processResults(results);
         if (this.down('#trendChart')) { this.down('trendChart').destroy();}
 
@@ -127,6 +149,7 @@ Ext.define('CustomApp', {
                 series: this.series
             },
             chartConfig: {
+                
                 chart: {
                     type: 'line'
                 },
@@ -135,6 +158,7 @@ Ext.define('CustomApp', {
                 },
                 xAxis: {
                     type: 'datetime',
+                    reversed: true,
                     dateTimeLabelFormats: 
                     {
                         day: "%e-%b-%y",
@@ -151,7 +175,7 @@ Ext.define('CustomApp', {
                 tooltip: {
                     headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
                         pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
-                        '<td style="padding:0"><b>{point.y:.1f} mm</b></td></tr>',
+                        '<td style="padding:0"><b>{point.y:.1f} </b></td></tr>',
                         footerFormat: '</table>',
                         shared: true,
                         useHTML: true
@@ -213,14 +237,15 @@ Ext.define('CustomApp', {
                     topBox.add( {
                         xtype: 'rallycheckboxfield',
                         fieldLabel: type.name,
-                        itemId: type.typePath.split('/').pop(),
+                        itemId: type.name.replace(/\s+/g,''),
                         margin: '10 0 5 15',
                         labelAlign: 'right',
                         listeners: {
                             change: function() {
                                 me._updateChart();
                             }
-                        }
+                        },
+                        scope: me
                     });
                 });
                 
@@ -245,7 +270,7 @@ Ext.define('CustomApp', {
                 }
                 var pDuration = pSize ? (Ext.Date.DAY) : (Ext.Date.MONTH);
                 var date = new Date(this.getSetting('endDate') || Ext.Date.now());
-                var dateFormat = pSize ? 'j/n/y' : 'M, y';
+                var dateFormat = pSize ? 'j/M/y' : 'M, y';
                 var loopFunctions = [];
                 var dates = [];
                 for (var i = 0; i < pCount; i++) {
@@ -262,11 +287,10 @@ Ext.define('CustomApp', {
                 
                 Deft.Chain.sequence(loopFunctions).then ({
                     success: function(results){
-                        me._updateChart(results);
+                        me._drawChart(results);
                     },
                     failure: function(result) {
                         console.log('Failed to execute series loop: ', result);
-                        debugger;
                     }
                 }).always(function() {
                     me.setLoading(false);
@@ -275,7 +299,6 @@ Ext.define('CustomApp', {
             },
             failure: function() {
                 console.log('Failed to fetch portfolioitem types');
-                debugger;
             },
             scope: me
         });
