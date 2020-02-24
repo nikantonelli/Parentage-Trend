@@ -4,8 +4,8 @@ Ext.define('CustomApp', {
 
     config: {
         defaultSettings: {
-            periodName: 'Day',
-            periodCount: 2,
+            periodName: 'Week',
+            periodCount: 12,
             endDate: new Date()
         }
 
@@ -224,6 +224,9 @@ Ext.define('CustomApp', {
         var me = this;
         this._fetchPortfolioItemTypes().then({
             success: function(types) {
+
+                //Take off the top level as it always has no parent
+                types.pop();
                 //It might make sense to add Defects here, but the numbers might seem
                 //a little skewed because some defects are not meant to have a parent.
                 types.splice(0,0, {
@@ -240,6 +243,7 @@ Ext.define('CustomApp', {
                         itemId: type.name.replace(/\s+/g,''),
                         margin: '10 0 5 15',
                         labelAlign: 'right',
+                        value: true,
                         listeners: {
                             change: function() {
                                 me._updateChart();
