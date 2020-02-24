@@ -2,7 +2,11 @@ Parentage-Trend
 =========================
 
 ## Overview
+Show the percentage of artefacts that are correctly parented to something above.
 
+This is a way to ensure that your company is only doing work that is part of the approved plan. 
+
+![alt text](https://github.com/nikantonelli/Parentage-Trend/blob/master/Images/image1.png)
 
 ## License
 
