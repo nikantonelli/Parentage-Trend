@@ -13,9 +13,8 @@
 
     config: {
         defaultSettings: {
-            periodName: 'Week',
-            periodCount: 12,
-            endDate: new Date()
+            startDate: Ext.Date.format(Ext.Date.subtract(new Date(), Ext.Date.MONTH,12), "Y-m-d"),
+            endDate: Ext.Date.format(new Date(), "Y-m-d")
         }
 
     },
@@ -26,88 +25,6 @@
             layout: 'hbox'
         }
     ],
-
-//     _getParents: function(date) {
-//         var parents = Ext.create('Deft.Deferred');
-//         var promises = [];
-//         _.each(this.types, function(type) {
-//             promises.push( function(){
-//                 var deferred = Ext.create('Deft.Deferred');
-//                 var filters = null;
-//                 if (type.typePath === 'HierarchicalRequirement') {
-//                     //With userstories, you can ask for the field which is the name of the first level portfolio item and 
-//                     //this field is cascaded down the userstory child hierarchy. So rather than asking for Parent or PortfolioItem,
-//                     //we ask for 'Feature' (or whatever it is called), we can ignore the parent-child userstory tree.
-//                     filters = { property: type.parentType.name, operator: '>', value: 0 };
-//                 }
-//                 else {
-//                     filters = { property: 'Parent', operator: '>', value: 0 };
-//                 }
-
-//                 this._loadRecordCount(type.typePath, Ext.clone(filters), type.name, date).then({
-//                     success: function(result) {
-// //                        me.parented.push(result);
-//                         deferred.resolve(result);
-//                     },
-//                     failure: function(result) {
-//                         console.log('Failed: ', result);
-//                         deferred.reject(result);
-//                     }
-//                 });
-//                 return deferred.promise;
-//             });
-//         }, this);
-//         Deft.Chain.parallel(promises, this).then({
-//             success: function(results) {
-//                 var pointParents = {};
-//                 _.each(results, function(result) {
-//                     pointParents = Ext.merge(pointParents,result);
-//                 });
-//                 parents.resolve(pointParents);
-//             },
-//             failure: function(results) {
-//                 console.log('GetTotals Failed: ', results);
-//                 parents.reject(results);
-//             }
-//         });
-//         return parents;
-
-//     },
-
-//     _getTotals: function(date) {
-//         var totals = Ext.create('Deft.Deferred');
-//         var promises = [];
-//         _.each(this.types, function(type) {
-//             promises.push( function(){
-//                 var deferred = Ext.create('Deft.Deferred');
-//                 this._loadRecordCount(type.typePath, { property: 'ObjectID', operator: '>', value: 0}, type.name, date).then({
-//                     success: function(result) {
-// //                        me.totals.push(result);
-//                         deferred.resolve(result);
-//                     },
-//                     failure: function(result) {
-//                         console.log('Failed: ', result);
-//                         deferred.reject(result);
-//                     }
-//                 });
-//                 return deferred.promise;
-//             });
-//         }, this);
-//         Deft.Chain.parallel(promises, this).then({
-//             success: function(results) {
-//                 var pointTotals = {};
-//                 _.each(results, function(result) {
-//                     pointTotals = Ext.merge(pointTotals,result);
-//                 });
-//                 totals.resolve(pointTotals);
-//             },
-//             failure: function(results) {
-//                 console.log('GetTotals Failed: ', results);
-//                 totals.reject(results);
-//             }
-//         });
-//         return totals;
-//     },
 
     _processResults: function(results) {
         var me = this;
@@ -284,34 +201,9 @@
     
         return [
             {
-                name: 'periodName',
-                fieldLabel: 'Period Type',
-                xtype: 'rallycombobox',
-                allowBlank: false,
-                autoSelect: true,
-                initialValue: 'Week',
-                displayField: 'name',
-                valueField: 'name',
-                storeType: 'Ext.data.Store',
-                storeConfig: {
-                    remoteFilter: false,
-                    fields: ['name'],
-                    data: [
-                        { 'name': 'Day'},
-                        { 'name': 'Week'},
-                        { 'name': 'Fortnight'},
-                        { 'name': 'Month'},
-                        { 'name': 'Quarter'}
-                    ],
-                },
-            },
-            {
-                name: 'periodCount',
-                xtype: 'rallynumberfield',
-                minValue: 3,
-                maxValue: 32,
-                fieldLabel: 'Period Count',
-                value: 1
+                name: 'startDate',
+                fieldLabel: 'Start Date',
+                xtype: 'rallydatefield'
             },
             {
                 name: 'endDate',
@@ -321,11 +213,20 @@
         ];
     },
 
-    _loadRecordCount: function(model, filters, x, y){
+    _loadRecordCount: function(model, filters){
         var deferred = Ext.create('Deft.Deferred');
-        console.log("Starting load: ",x,y, " >> ",model, 'filters >> ', filters);
+        var startDate = this.getSetting('startDate');
+        var endDate = this.getSetting('endDate');
+        console.log("Starting load: ",startDate,endDate, " >> ",model, 'filters >> ', filters);
+        var localFilterString = "((CreationDate >" + startDate + ") AND (CreationDate <" + endDate + "))";
+        var localFilters = Rally.data.wsapi.Filter.fromQueryString(localFilterString);
+        if (filters) {
+            localFilters = Rally.data.wsapi.Filter.and([
+                Rally.data.wsapi.Filter.fromQueryString(filters?filters:'()'),
+                localFilters
+            ]);
+        }
 
-        var localFilters = filters?Rally.data.wsapi.Filter.fromQueryString(filters):[];
         Ext.create('Rally.data.wsapi.Store', {
             model: model.toLowerCase(),
             filters: localFilters,
