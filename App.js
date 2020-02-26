@@ -108,7 +108,7 @@ Ext.define('CustomApp', {
             { name: 'total', type: 'int'}
         ];
         _.each( Ext.clone(this.types).reverse(), function( type) {
-            fields.push({ name: type.name.replace(/\s+/g, ''), type: 'int'});
+            fields.push({ name: type.name, type: 'int'});
         });
 
         Ext.define('Niks.Tree.Record', {
