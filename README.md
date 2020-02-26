@@ -8,6 +8,9 @@ This is a way to ensure that your company is only doing work that is part of the
 
 ![alt text](https://github.com/nikantonelli/Parentage-Trend/blob/master/Images/image1.png)
 
+Also, over here you will find a truth table for the here-and-now numbers:
+![at text](https://github.com/nikantonelli/Parentage-Trend/tree/Parentage-Truth)
+
 ## License
 
 Parentage-Trend is released under the MIT license.  See the file [LICENSE](./LICENSE) for the full text.
