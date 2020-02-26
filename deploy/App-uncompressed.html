@@ -161,7 +161,14 @@
 
         var columns = [ { text: 'Type', dataIndex: 'type'} ];
         for (var i =1; i < this.types.length; i++) {
-            columns.push ( { text: "Up to: " +this.types[i].name, dataIndex: this.types[i].name, flex: 1});
+            columns.push ( { 
+                text: "Percent to: " +this.types[i].name, 
+                dataIndex: this.types[i].name, 
+                flex: 1,
+                renderer: function (value, metaData, record) {
+                    return (record.get('total')? ((value/record.get('total'))*100): 0).toFixed(1);
+                }
+                });
         }
         columns.push({ text: 'Total', dataIndex: 'total' });
         this.add({
