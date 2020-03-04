@@ -303,8 +303,10 @@ Ext.define('CustomApp', {
         var me = this;
         me.date = new Date(me.getSetting('atDate'));    //Externally, we don't get a setting so add an OR to get a real date for testing
 
+        me.setLoading("Fetching portfolio item types");
         this._fetchPortfolioItemTypes().then({
             success: function(types) {
+                me.setLoading("Fetching data for: " + Ext.Date.format(me.date, 'Y/m/d'));
 
                 //It might make sense to add Defects here, but the numbers might seem
                 //a little skewed because some defects are not meant to have a parent.
@@ -329,10 +331,11 @@ Ext.define('CustomApp', {
                  * To do this vertical striping, we have to write this to recurse down before it traverses across.
                  */
                 _.each(types, function(type) {
-                    loopFunctions.push(function() { return me._getNumbersForType(type);});
+                    loopFunctions.push(function() { 
+                        me.setLoading( "Fetching all of type: " + type.name);
+                        return me._getNumbersForType(type);});
                 });
 
-                me.setLoading(" Fetching data for: " + Ext.Date.format(me.date, 'Y/m/d'));
                 Deft.Chain.sequence(loopFunctions).then({
                     success: function(resultSets) { //Must arrive in order from hierarchicalrequirement up to top kevel pi
                         var atStore = me._processResults(resultSets);
