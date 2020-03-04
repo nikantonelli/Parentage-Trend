@@ -5,8 +5,7 @@ Ext.define('CustomApp', {
 
     config: {
         defaultSettings: {
-            atDate: Ext.Date.format(Ext.Date.subtract(new Date(), Ext.Date.MONTH,12), "Y-m-d"),
-            compareDate: Ext.Date.format(new Date(), "Y-m-d")
+            atDate: Ext.Date.format(new Date(), "Y-m-d")
         }
 
     },
@@ -18,13 +17,110 @@ Ext.define('CustomApp', {
         }
     ],
 
-    _processResults: function(nodeTree) {
-        debugger;
+    _hasParent: function(child) {
+        var fieldName = (child.type.typePath === 'HierarchicalRequirement') ? this.types[1].name : "Parent";
+        return (child.record.get(fieldName) > 0)? _.find(this.nodes, function(parent) {
+            return parent.record.get('ObjectID') === child.record.get(fieldName);}):null;
     },
 
-    _drawGrid: function(results) {
-        var store = this._processResults(results);
-        if (this.down('#grid')) { this.down('grid').destroy();}
+    _hasChildren: function(node) {
+        var childField = "Children";
+        if (node.type.typePath === this.types[1].typePath) {
+            childField = "UserStories";
+        }
+        return node.record.get(childField).length;
+    },
+
+    _findDepth: function(node) {
+        var depth = -1;
+        var item = node;
+        do {
+            item = this._hasParent(item);
+            depth +=1;
+        }while(item);
+        return depth;
+    },
+
+    _processResults: function(resultSets) {
+        var me = this;
+
+        me._Items = [];
+
+        _.each(me.types, function() {
+            var arr1 = [];
+            for (var i = 0; i < me.types.length; i++) {
+                arr1.push(0);
+            }
+            me._Items.push(arr1);
+        });
+        me.nodes = [];
+        _.each(resultSets, function(resultSet) {
+            _.each(resultSet.results, function(record) {
+                me.nodes.push({
+                    type: resultSet.type,
+                    record: record
+                });
+            });
+        });
+
+        _.each(me.nodes, function(node) {
+            var idx = _.findIndex(me.types, function(type) {
+                return type.typePath === node.type.typePath;
+            });
+            var depth = me._findDepth(node);
+            for (var i = depth; i >= 0; i--){
+                me._Items[idx][ idx + i ] +=1;
+            }
+        });
+
+        for ( var j = 0; j < (me.types.length-1); j++) {
+            for ( var i = j+1; i < (me.types.length ); i++) {
+                if (me._Items[j][j] > 0) {
+                    me._Items[j][i] = ((me._Items[j][i]/me._Items[j][j])*100);
+                }
+            }
+        }
+
+        // Create the record type
+        var fields = [
+            { name: 'type', type: 'string' },
+            { name: 'total', type: 'int'}
+        ];
+        _.each( Ext.clone(this.types).reverse(), function( type) {
+            fields.push({ name: type.name, type: 'float'});
+        });
+
+        Ext.define('Niks.Tree.Record', {
+            extend: 'Ext.data.Model',
+            fields: fields,
+            isUpdatable: function() { return false;},
+            isTimebox: function() { return false;},
+            isUser: function() { return false;},
+            isMilestone: function() { return false;},
+        });
+
+        var data = [];
+
+        _.each(me._Items, function(resultArray, idx) {
+            var record = _.find(data, { type: me.types[idx].name});
+            if ( !record) {
+                data.push( { type: me.types[idx].name, total: me._Items[idx][idx]});
+                record = _.find(data, { type: me.types[idx].name});
+            }
+            for (var i = idx+1; i < (me.types.length); i++) {
+                record[me.types[i].name] = me._Items[idx][i];
+            }
+        });
+        var store = Ext.create('Ext.data.Store', {
+            model: 'Niks.Tree.Record',
+            data: data
+        });
+
+        return store;
+    },
+
+    _drawGrid: function(atStore) {
+        if (this.down('#grid')) { this.down('#grid').destroy();}
 
         var columns = [ { text: 'Type', dataIndex: 'type'} ];
         for (var i =1; i < this.types.length; i++) {
@@ -32,16 +128,14 @@ Ext.define('CustomApp', {
                 text: "Percent to: " +this.types[i].name, 
                 dataIndex: this.types[i].name, 
                 flex: 1,
-                renderer: function (value, metaData, record) {
-                    return (record.get('total')? ((value/record.get('total'))*100): 0).toFixed(1);
-                }
+                renderer: function(value) { return value.toFixed(1);}
                 });
         }
         columns.push({ text: 'Total', dataIndex: 'total' });
         this.add({
             xtype: 'grid',
             model: 'Niks.Tree.Record',
-            store: store,
+            store: atStore,
             columns: columns,
             height: 300,
             width: 800
@@ -98,6 +192,7 @@ Ext.define('CustomApp', {
             filters: localFilters,
             limit: Infinity,
             pageSize: 2000,
+            useHttpPost: true,
             fetch: ["_ValidFrom", "_ValidTo", "ObjectID", "Children", "Parent", "UserStories", me.types[1].name ]
         }).load({
             callback : function(records, operation, successful) {
@@ -176,7 +271,7 @@ Ext.define('CustomApp', {
         return deferred.promise;
     },
 
-    _Items: {},
+    _Items: [],
 
     _getNumbersForType: function(type) {
         var deferred = Ext.create('Deft.Deferred');
@@ -188,7 +283,7 @@ Ext.define('CustomApp', {
                 });
             },
             failure: function(error) {
-                debugger;
+                console.log("Failed to getOneLevelItems for: ", type);
                 deferred.reject(error);
             }
         });
@@ -197,9 +292,7 @@ Ext.define('CustomApp', {
 
     launch: function() {
         var me = this;
-        me.date = new Date();
-        var nodes = [];
-        var nodeTree = null;
+        me.date = new Date(me.getSetting('atDate'));    //Externally, we don't get a setting so add an OR to get a real date for testing
 
         this._fetchPortfolioItemTypes().then({
             success: function(types) {
@@ -230,38 +323,17 @@ Ext.define('CustomApp', {
                     loopFunctions.push(function() { return me._getNumbersForType(type);});
                 });
 
-                 Deft.Chain.sequence(loopFunctions).then({
-                    success: function(resultSets) {
-                        //Now we have all the items in memory, we can re-create the tree in the way we need
-
-                        _.each( resultSets, function(resultSet, idx) {  //Order of completion is guaranteed due to use of 'Deft.sequence'
-                            var type = resultSet.type;
-                           //Create nodes for each type for those without a parent
-                            nodes.push({
-                                id: idx,
-                                type: type,
-                                record: null,
-                                total: resultSet.results.length
-                            });
-
-                            var results = resultSet.results;
-                            _.each(results, function(result) {
-                                nodes.push({
-                                    id: result.get('ObjectID'),
-                                    type: type,
-                                    record: result
-                                });
-                            });
-                        });
-                        nodeTree = me._createNodeTree(nodes);
-                        me._processResults(nodeTree);
+                me.setLoading(" Fetching data for: " + Ext.Date.format(me.date, 'Y/m/d'));
+                Deft.Chain.sequence(loopFunctions).then({
+                    success: function(resultSets) { //Must arrive in order from hierarchicalrequirement up to top kevel pi
+                        var atStore = me._processResults(resultSets);
+                        me._drawGrid(atStore); 
                     },
                     failure: function(error) {
                         console.log('Failed to fetch sequence: ', error);
-                        debugger;     //Not fussed what the error is, we can just ignore.
                     },
                     scope: me
-                });
+                }).always(function() { me.setLoading(false); });
 
 
             },
@@ -269,7 +341,7 @@ Ext.define('CustomApp', {
                 console.log('Failed to fetch portfolioitem types');
             },
             scope: me
-        });
+        }).always(function() { me.setLoading(false); });
     },
 
     _getParentId: function(d) {
@@ -281,72 +353,16 @@ Ext.define('CustomApp', {
         }
     },
 
-    _findParentNode: function(nodes, d) {
-        var me = this;
-        var parentId = me._getParentId(d);
-        //If we have a normal parent Id, then return tht
-        if (parentId > 0) {
-            return parentId;
-        }
-        //If not, then give back the 'index'
-        else {
-            return _.findIndex(me.types, function(type) {
-                return type.typePath === d.type.typePath;
-            });
-        }
-    },
-
-    _stratifyNodeTree: function(nodes) {
-        var me = this;
-        return d3.stratify()
-        .id( function(d) {
-            return d.id;
-        })
-        .parentId( function(d) {
-
-            //Top level node is the one for the last portfolio item
-            if (d.id === (me.types.length - 1)) { return null;}
-            //If we are a real node, find the parent
-            if ( d.record ) { 
-                return me._findParentNode(nodes, d);
-            }
-            //If not, and we shouldn't get here for real nodes, then connect this to the root node
-            else if (d.id < (me.types.length - 1)) {return d.id + 1;}
-            else { return null;}
-            
-        })
-        (nodes);
-    },
-    _sumNodeTree: function(tree, level) {
-        tree.each( function(d) { d.value = 0;});
-        return tree.sum(function(d) { 
-            if (d.height >= level) {return 1;}
-            else return 0;
-        });
-    },
-    _createNodeTree: function (nodes) {
-        //Try to use d3.stratify to create nodes
-        var nodetree = this._stratifyNodeTree(nodes);
-        this._nodeTree = this._sumNodeTree(nodetree,);      //Save for later
-        return nodetree;
-    },
-
     getSettingsFields: function() {
     
         return [
             {
                 name: 'atDate',
-                fieldLabel: 'Timestamp Date',
+                fieldLabel: 'Use data as of:',
                 xtype: 'rallydatefield',
                 allowBlank: true,
-                blankText: "Use todays date"
-            },
-            {
-                name: 'compareDate',
-                fieldLabel: 'Comparison Date',
-                xtype: 'rallydatefield',
-                allowBlank: true,
-                blankText: "Use last years date"
+                blankText: "Use todays date",
+                margin: '0 0 150 0'
             }
         ];
     },
