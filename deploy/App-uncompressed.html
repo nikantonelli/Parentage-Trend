@@ -33,14 +33,6 @@ Ext.define('CustomApp', {
             return parent.record.get('ObjectID') === child.record.get(fieldName);}):null;
     },
 
-    _hasChildren: function(node) {
-        var childField = "Children";
-        if (node.type.typePath === this.types[1].typePath) {
-            childField = "UserStories";
-        }
-        return node.record.get(childField).length;
-    },
-
     _findDepth: function(node) {
         var depth = -1;
         var item = node;
@@ -232,7 +224,6 @@ Ext.define('CustomApp', {
     },
 
     _getTopLevelItems: function() {
-//        var lastType = this.types[1];
         var lastType = this.types[this.types.length-1];
         return this._getOneLevelItems(lastType, []);
     },
@@ -327,17 +318,6 @@ Ext.define('CustomApp', {
                     
                 var loopFunctions = [];
 
-                /**
-                 * From the 'n' level items, use _ItemHierarchy to find how many of each type there are in the tree below
-                 * 
-                 * So, firstly, we need the list of 'n' level items. For each one do the same for those we didn't get in the previous fetch
-                 * For each location in the table, we need to get four numbers, startPercent, endPercent, percentAdded, percentRemoved
-                 * 
-                 * This is going to be hugely memory intensive unless we can do vertical stripes down through the tree. Each time we 
-                 * have completed a top-to-bottom strip, we can discard the store(s) to reclaim memory. 
-                 * 
-                 * To do this vertical striping, we have to write this to recurse down before it traverses across.
-                 */
                 _.each(types, function(type) {
                     loopFunctions.push(function() { 
                         me.setLoading( "Fetching all of type: " + type.name);
@@ -382,7 +362,7 @@ Ext.define('CustomApp', {
                 xtype: 'rallydatefield',
                 allowBlank: true,
                 blankText: "Use todays date",
-                margin: '0 0 150 0'
+                margin: '0 0 150 0' //Need this 150 or else the date popup is obscured by the bottom of the settings panel.
             }
         ];
     },
@@ -419,7 +399,6 @@ Ext.define('CustomApp', {
                         //Use ordinal to make sure the lowest level portfolio item type is the first in the array.
                         var idx = Number(d.get('Ordinal'));
                         portfolioItemTypes[idx] = { typePath: d.get('TypePath'), name: d.get('Name'), type: d.get('_ref').split('/').pop() };
-                        //portfolioItemTypes.reverse();
                     });
                     //Now add the parent type in
                     for (var i =0; i < (portfolioItemTypes.length-1); i++) {
