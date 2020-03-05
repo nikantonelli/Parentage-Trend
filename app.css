@@ -1,3 +1,10 @@
-.app {
-     /* Add app styles here */
+p {
+     display: block;
+     margin-top: 1em;
+     margin-bottom: 1em;
+     margin-left: 0;
+     margin-right: 0;
+     font-size:16px;
+     width: 750;
+     text-align: center;
 }

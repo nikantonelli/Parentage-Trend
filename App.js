@@ -2,7 +2,8 @@
 Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
-
+    stateful: true,
+    stateId: 'NiksApps_LBAPI_Parentage'+Ext.id(),
     config: {
         defaultSettings: {
             atDate: Ext.Date.format(new Date(), "Y-m-d")
@@ -17,7 +18,7 @@ Ext.define('CustomApp', {
         }
     ],
 
-    _hasParent: function(child) {
+    _haveParent: function(child) {
         var fieldName = (child.type.typePath === 'HierarchicalRequirement') ? this.types[1].name : "Parent";
         return (child.record.get(fieldName) > 0)? _.find(this.nodes, function(parent) {
             return parent.record.get('ObjectID') === child.record.get(fieldName);}):null;
@@ -35,7 +36,7 @@ Ext.define('CustomApp', {
         var depth = -1;
         var item = node;
         do {
-            item = this._hasParent(item);
+            item = this._haveParent(item);
             depth +=1;
         }while(item);
         return depth;
@@ -137,9 +138,16 @@ Ext.define('CustomApp', {
             model: 'Niks.Tree.Record',
             store: atStore,
             columns: columns,
-            height: 300,
+            height: 120,
             width: 800
         });
+
+        this.add({
+            xtype: 'component',
+            width: 800,
+            align: 'center',
+            html: '<p>' + 'Sample Date:   ' + Ext.Date.format(this.date, 'j M Y') + '</p>'
+        })
 
     },
     
