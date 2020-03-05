@@ -4,7 +4,7 @@ Parentage-Trend
 ## Overview
 This is a table of the current values of parentage. It does not show you what the state of the parentage was in history, but you can filter the table to those artefacts that were 'Created' within a particular timeframe
 
-![alt text](https://github.com/nikantonelli/Parentage-Trend/blob/Parentage-Truth-Table/Images/image2.png)
+![alt text](https://github.com/nikantonelli/Parentage-Trend/blob/Parentage-LBAPI-Truth-Table/Images/image3.png)
 
 ## License
 
