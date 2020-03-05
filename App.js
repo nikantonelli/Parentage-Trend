@@ -6,7 +6,8 @@ Ext.define('CustomApp', {
     stateId: 'NiksApps_LBAPI_Parentage'+Ext.id(),
     config: {
         defaultSettings: {
-            atDate: Ext.Date.format(new Date(), "Y-m-d")
+            atDate: Ext.Date.format(new Date(), "Y-m-d"),
+            dateDuration: 0
         }
 
     },
@@ -139,7 +140,17 @@ Ext.define('CustomApp', {
             width: 800,
             align: 'center',
             html: '<p>' + 'Sample Date:   ' + Ext.Date.format(this.date, 'j M Y') + '</p>'
-        })
+        });
+
+        var dateDuration = this.getSetting('dateDuration');
+        if (dateDuration>0){
+            this.add({
+                xtype: 'component',
+                width: 800,
+                align: 'center',
+                html: '<p>' + 'Artefacts created between ' +   Ext.Date.format(Ext.Date.subtract(this.date,Ext.Date.MONTH, dateDuration), 'j M Y') + ' and ' + Ext.Date.format(this.date, 'j M Y') + '</p>'
+            }); 
+        }
 
     },
     
@@ -188,6 +199,20 @@ Ext.define('CustomApp', {
                 value: me.getContext().getProject().ObjectID
             }
         ].concat(filters);
+    
+        var dateDuration = me.getSetting('dateDuration');
+        if (dateDuration >0){
+            localFilters.push( {
+                property: 'CreationDate',
+                operator: '>',
+                value: Ext.Date.format(Ext.Date.subtract(date,Ext.Date.MONTH, dateDuration), "Y-m-d\\TH:i:s")
+            });
+            localFilters.push( {
+                property: 'CreationDate',
+                operator: '<',
+                value: Ext.Date.format(date, "Y-m-d\\TH:i:s")
+            });
+        }
         Ext.create('Rally.data.lookback.SnapshotStore', {
             filters: localFilters,
             limit: Infinity,
@@ -209,15 +234,6 @@ Ext.define('CustomApp', {
         return deferred.promise;
 
     },
-    _getLowestLevelItems: function() {
-        var lastType = this.types[0];
-        return this._getOneLevelItems(lastType, []);
-    },
-
-    _getTopLevelItems: function() {
-        var lastType = this.types[this.types.length-1];
-        return this._getOneLevelItems(lastType, []);
-    },
 
     _getOneLevelItems: function(type, filters) {
         var deferred = Ext.create('Deft.Deferred');
@@ -229,52 +245,11 @@ Ext.define('CustomApp', {
         return deferred.promise;
     },
 
-    _getCollection: function(parent,childField) {
-        var children = parent.get(childField);  //Gives back an array of ObjectIDs
-        var filters = [{
-            property: "_ItemHierarchy",
-            operator: "in",
-            value: children
-        }];
-        var parentField = (childField === "UserStories")?this.types[1].name: "Parent";
-        filters.push({
-            property: parentField,
-            value: parent.get("ObjectID")
-        });
-        return this._loadRecordSnapshots( filters, this.date);
-    },
-
-    _getChildren: function(parent) {
-        var me = this;
-        var deferred = Ext.create('Deft.Deferred');
-        var childField = (parent.get('PortfolioItemType') === Number(this.types[1].type))?"UserStories":"Children";
-
-        if (parent.get(childField).length > 0) {
-            this._getCollection(parent,childField).then( {
-                success: function(records) {
-                    console.log('Found :' + records.length + ' for: ', parent);                   
-                    deferred.resolve(records);
-                },
-                failure: function(error){
-                    console.log('Failed to fetch Collection: ', error);
-                    deferred.reject(error);
-                },
-                scope: me
-            });
-        }
-        else {
-            console.log('No Children for: ', parent);
-            deferred.resolve([]);
-        }
-
-        return deferred.promise;
-    },
-
     _Items: [],
 
     _getNumbersForType: function(type) {
         var deferred = Ext.create('Deft.Deferred');
-        this._getOneLevelItems(type,[], this.date).then({
+        this._getOneLevelItems(type,[]).then({
             success: function(results) {
                 deferred.resolve({
                     type: type,
@@ -335,25 +310,24 @@ Ext.define('CustomApp', {
         }).always(function() { me.setLoading(false); });
     },
 
-    _getParentId: function(d) {
-        if (d.type.typePath === "HierarchicalRequirement") {
-            return d.record.get(this.types[1].name);
-        }
-        else {
-            return d.record.get('Parent');
-        }
-    },
-
     getSettingsFields: function() {
     
         return [
             {
                 name: 'atDate',
                 fieldLabel: 'Use data as of:',
+                labelWidth: 150,
                 xtype: 'rallydatefield',
                 allowBlank: true,
                 blankText: "Use todays date",
-                margin: '0 0 150 0' //Need this 150 or else the date popup is obscured by the bottom of the settings panel.
+            },
+            {
+                name: 'dateDuration',
+                labelWidth: 150,
+                fieldLabel: 'Creation Period (months prior)',
+                xtype: 'rallynumberfield',
+                margin: '0 0 150 0', //Need this 150 or else the date popup is obscured by the bottom of the settings panel.
+                value: 0
             }
         ];
     },
