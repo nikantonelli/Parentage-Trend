@@ -246,7 +246,8 @@ Ext.define('CustomApp', {
 
     _getOneLevelItems: function(type, filters) {
         var deferred = Ext.create('Deft.Deferred');
-        this._loadRecordTypeSnapshots(type, filters, this.date).then({
+        //Add one to catch todays entries.
+        this._loadRecordTypeSnapshots(type, filters, Ext.Date.add(this.date, Ext.Date.DAY,1)).then({
             success: function(results) {
                 deferred.resolve(results);
             }
