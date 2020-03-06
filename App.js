@@ -266,7 +266,12 @@ Ext.define('CustomApp', {
 
     launch: function() {
         var me = this;
-        me.date = new Date(me.getSetting('atDate'));    //Externally, we don't get a setting so add an OR to get a real date for testing
+        if (me.getSetting('atDate') && (me.getSetting('atDate').length > 0)) {
+            me.date = new Date(me.getSetting('atDate'));    //Externally, we don't get a setting so add an OR to get a real date for testing
+        }
+        else {
+            me.date = new Date();
+        }
 
         me.setLoading("Fetching portfolio item types");
         this._fetchPortfolioItemTypes().then({
